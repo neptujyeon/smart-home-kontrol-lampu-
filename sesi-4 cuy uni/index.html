@@ -1,0 +1,857 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Home - Kontrol Lampu</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0a0e1a;
+      --bg-card: #111827;
+      --bg-card2: #0f172a;
+      --accent-blue: #00d4ff;
+      --accent-yellow: #ffd700;
+      --accent-green: #00ff88;
+      --accent-purple: #a855f7;
+      --accent-orange: #ff6b35;
+      --text-main: #e2e8f0;
+      --text-dim: #64748b;
+      --glow-blue: 0 0 20px #00d4ff66;
+      --glow-yellow: 0 0 30px #ffd70099;
+      --border-dim: #1e293b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Rajdhani', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Floating orbs */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.15;
+      pointer-events: none;
+      z-index: 0;
+      animation: floatOrb 8s ease-in-out infinite;
+    }
+    .orb1 { width: 400px; height: 400px; background: #00d4ff; top: -100px; left: -100px; animation-delay: 0s; }
+    .orb2 { width: 300px; height: 300px; background: #a855f7; bottom: -50px; right: -50px; animation-delay: 3s; }
+    .orb3 { width: 200px; height: 200px; background: #ffd700; top: 50%; left: 50%; animation-delay: 6s; }
+
+    @keyframes floatOrb {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(30px, -30px); }
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .header-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(168,85,247,0.1));
+      border: 1px solid rgba(0,212,255,0.3);
+      border-radius: 50px;
+      padding: 0.3rem 1.2rem;
+      font-size: 0.75rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--accent-blue);
+      margin-bottom: 1rem;
+    }
+
+    h1 {
+      font-family: 'Orbitron', monospace;
+      font-size: clamp(1.8rem, 5vw, 3rem);
+      font-weight: 900;
+      background: linear-gradient(135deg, #00d4ff, #a855f7, #ffd700);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 2px;
+      line-height: 1.2;
+      margin-bottom: 0.5rem;
+    }
+
+    .header-sub {
+      color: var(--text-dim);
+      font-size: 1rem;
+      letter-spacing: 1px;
+    }
+
+    /* Stats bar */
+    .stats-bar {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent-blue);
+    }
+
+    .stat-label {
+      font-size: 0.7rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    /* Room grid */
+    .rooms-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+
+    /* Room card */
+    .room-card {
+      background: linear-gradient(135deg, var(--bg-card), var(--bg-card2));
+      border: 1px solid var(--border-dim);
+      border-radius: 20px;
+      padding: 1.5rem;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.4s ease;
+    }
+
+    .room-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--room-color, var(--accent-blue));
+      opacity: 0.7;
+      transition: opacity 0.3s;
+    }
+
+    .room-card.active-room::before {
+      opacity: 1;
+      box-shadow: 0 0 20px var(--room-color, var(--accent-blue));
+    }
+
+    .room-card:hover {
+      border-color: rgba(0,212,255,0.2);
+      transform: translateY(-2px);
+    }
+
+    /* Room header */
+    .room-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-dim);
+    }
+
+    .room-info {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .room-icon {
+      width: 42px; height: 42px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--room-color, #00d4ff)22, var(--room-color, #00d4ff)11);
+      border: 1px solid var(--room-color, #00d4ff)44;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      transition: all 0.3s;
+    }
+
+    .room-card.active-room .room-icon {
+      background: linear-gradient(135deg, var(--room-color, #00d4ff)44, var(--room-color, #00d4ff)22);
+      box-shadow: 0 0 15px var(--room-color, #00d4ff)44;
+    }
+
+    .room-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-main);
+    }
+
+    .room-count {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    /* Master toggle */
+    .master-toggle-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .master-label {
+      font-size: 0.6rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    /* Lamps grid inside room */
+    .lamps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 0.8rem;
+    }
+
+    /* Single lamp */
+    .lamp-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border-dim);
+      border-radius: 14px;
+      padding: 0.8rem 0.5rem;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .lamp-item:hover {
+      background: rgba(255,255,255,0.04);
+      border-color: rgba(255,255,255,0.1);
+    }
+
+    .lamp-item.lamp-on {
+      background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,180,0,0.04));
+      border-color: rgba(255,215,0,0.3);
+      box-shadow: 0 0 20px rgba(255,215,0,0.1);
+    }
+
+    /* SVG Lamp Icon */
+    .lamp-svg {
+      width: 48px;
+      height: 48px;
+      transition: all 0.4s ease;
+      filter: drop-shadow(0 0 0px #ffd700);
+    }
+
+    .lamp-item.lamp-on .lamp-svg {
+      filter: drop-shadow(0 0 12px #ffd700) drop-shadow(0 0 6px #ffaa00);
+      animation: lampPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes lampPulse {
+      0%, 100% { filter: drop-shadow(0 0 12px #ffd700) drop-shadow(0 0 6px #ffaa00); }
+      50% { filter: drop-shadow(0 0 20px #ffd700) drop-shadow(0 0 10px #ffaa00); }
+    }
+
+    .lamp-name {
+      font-size: 0.65rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      text-align: center;
+      transition: color 0.3s;
+    }
+
+    .lamp-item.lamp-on .lamp-name {
+      color: #ffd700;
+    }
+
+    /* Toggle Switch */
+    .toggle-switch {
+      position: relative;
+      width: 36px;
+      height: 20px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: #1e293b;
+      border-radius: 20px;
+      border: 1px solid #334155;
+      transition: all 0.3s ease;
+    }
+
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      left: 3px;
+      top: 2px;
+      background: #475569;
+      border-radius: 50%;
+      transition: all 0.3s ease;
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+      background: linear-gradient(135deg, #ffd700, #ffaa00);
+      border-color: #ffd700;
+      box-shadow: 0 0 10px rgba(255,215,0,0.5);
+    }
+
+    .toggle-switch input:checked + .toggle-slider::before {
+      transform: translateX(16px);
+      background: white;
+    }
+
+    /* Master toggle - bigger */
+    .master-toggle .toggle-switch {
+      width: 44px;
+      height: 24px;
+    }
+
+    .master-toggle .toggle-slider::before {
+      width: 17px;
+      height: 17px;
+      left: 3px;
+      top: 3px;
+    }
+
+    .master-toggle .toggle-switch input:checked + .toggle-slider {
+      background: linear-gradient(135deg, var(--room-color, #00d4ff), var(--room-color-dark, #0099bb));
+      border-color: var(--room-color, #00d4ff);
+      box-shadow: 0 0 12px var(--room-color, #00d4ff)88;
+    }
+
+    .master-toggle .toggle-slider::before {
+      background: #475569;
+    }
+    .master-toggle .toggle-switch input:checked + .toggle-slider::before {
+      transform: translateX(20px);
+      background: white;
+    }
+
+    /* Glow rays when lamp is on */
+    .glow-rays {
+      position: absolute;
+      top: 0; right: 0;
+      width: 80px; height: 80px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s;
+    }
+
+    .room-card.active-room .glow-rays {
+      opacity: 0.3;
+    }
+
+    /* Footer note */
+    footer {
+      text-align: center;
+      margin-top: 3rem;
+      padding: 1.5rem;
+      border-top: 1px solid var(--border-dim);
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    footer span {
+      color: var(--accent-blue);
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .lamps-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .stats-bar {
+        gap: 1rem;
+      }
+    }
+
+    /* Active indicator dot */
+    .status-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      transition: all 0.3s;
+      display: inline-block;
+      margin-right: 4px;
+    }
+
+    .status-dot.active {
+      background: var(--accent-green);
+      box-shadow: 0 0 6px var(--accent-green);
+      animation: blink 1.5s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* Decorative line */
+    .deco-line {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent-blue)44, transparent);
+      margin: 1.5rem 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+
+<div class="container">
+
+  <!-- Header -->
+  <header>
+    <div class="header-badge">Smart Home System</div>
+    <h1>KONTROL LAMPU</h1>
+    <p class="header-sub">Sistem manajemen pencahayaan rumah pintar</p>
+    <div class="deco-line"></div>
+    <div class="stats-bar">
+      <div class="stat-item">
+        <div class="stat-value" id="total-on">0</div>
+        <div class="stat-label">Lampu Nyala</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="total-off">10</div>
+        <div class="stat-label">Lampu Mati</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="total-rooms">0</div>
+        <div class="stat-label">Ruangan Aktif</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Rooms Grid -->
+  <div class="rooms-grid">
+
+    <!-- RUANGAN KELUARGA (3 lampu: 1,2,3) -->
+    <div class="room-card" id="room-keluarga" style="--room-color: #00d4ff; --room-color-dark: #0099bb;">
+      <svg class="glow-rays" viewBox="0 0 80 80" fill="none">
+        <circle cx="80" cy="0" r="60" fill="#00d4ff" opacity="0.3"/>
+      </svg>
+      <div class="room-header">
+        <div class="room-info">
+          <div class="room-icon">🛋️</div>
+          <div>
+            <div class="room-title">Ruang Keluarga</div>
+            <div class="room-count"><span class="status-dot" id="dot-keluarga"></span><span id="info-keluarga">0 / 3 menyala</span></div>
+          </div>
+        </div>
+        <div class="master-toggle" style="--room-color: #00d4ff; --room-color-dark: #0099bb;">
+          <div class="master-toggle-wrap">
+            <span class="master-label">All</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="master-keluarga" onchange="masterToggle('keluarga')">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="lamps-grid">
+        <div class="lamp-item" id="item-lampu1">
+          <svg class="lamp-svg" id="lampu1" viewBox="0 0 48 60">
+            <defs>
+              <radialGradient id="bulb1" cx="50%" cy="40%" r="50%">
+                <stop offset="0%" stop-color="#555" id="bulb1-c1"/>
+                <stop offset="100%" stop-color="#222" id="bulb1-c2"/>
+              </radialGradient>
+            </defs>
+            <ellipse cx="24" cy="22" rx="14" ry="16" fill="url(#bulb1)" stroke="#333" stroke-width="1.5"/>
+            <path d="M17 36 Q24 42 31 36" fill="none" stroke="#333" stroke-width="2"/>
+            <rect x="19" y="36" width="10" height="4" rx="2" fill="#2a2a2a" stroke="#333"/>
+            <rect x="20" y="40" width="8" height="3" rx="1.5" fill="#252525" stroke="#333"/>
+            <line x1="24" y1="0" x2="24" y2="6" stroke="#444" stroke-width="2"/>
+          </svg>
+          <span class="lamp-name">Lampu 1</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="default-toggle1" onchange="saklarSingle(1, 'keluarga')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="lamp-item" id="item-lampu2">
+          <svg class="lamp-svg" id="lampu2" viewBox="0 0 48 60">
+            <defs><radialGradient id="bulb2" cx="50%" cy="40%" r="50%"><stop offset="0%" stop-color="#555" id="bulb2-c1"/><stop offset="100%" stop-color="#222" id="bulb2-c2"/></radialGradient></defs>
+            <ellipse cx="24" cy="22" rx="14" ry="16" fill="url(#bulb2)" stroke="#333" stroke-width="1.5"/>
+            <path d="M17 36 Q24 42 31 36" fill="none" stroke="#333" stroke-width="2"/>
+            <rect x="19" y="36" width="10" height="4" rx="2" fill="#2a2a2a" stroke="#333"/>
+            <rect x="20" y="40" width="8" height="3" rx="1.5" fill="#252525" stroke="#333"/>
+            <line x1="24" y1="0" x2="24" y2="6" stroke="#444" stroke-width="2"/>
+          </svg>
+          <span class="lamp-name">Lampu 2</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="default-toggle2" onchange="saklarSingle(2, 'keluarga')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="lamp-item" id="item-lampu3">
+          <svg class="lamp-svg" id="lampu3" viewBox="0 0 48 60">
+            <defs><radialGradient id="bulb3" cx="50%" cy="40%" r="50%"><stop offset="0%" stop-color="#555" id="bulb3-c1"/><stop offset="100%" stop-color="#222" id="bulb3-c2"/></radialGradient></defs>
+            <ellipse cx="24" cy="22" rx="14" ry="16" fill="url(#bulb3)" stroke="#333" stroke-width="1.5"/>
+            <path d="M17 36 Q24 42 31 36" fill="none" stroke="#333" stroke-width="2"/>
+            <rect x="19" y="36" width="10" height="4" rx="2" fill="#2a2a2a" stroke="#333"/>
+            <rect x="20" y="40" width="8" height="3" rx="1.5" fill="#252525" stroke="#333"/>
+            <line x1="24" y1="0" x2="24" y2="6" stroke="#444" stroke-width="2"/>
+          </svg>
+          <span class="lamp-name">Lampu 3</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="default-toggle3" onchange="saklarSingle(3, 'keluarga')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- RUANGAN MAKAN (1 lampu: 4) -->
+    <div class="room-card" id="room-makan" style="--room-color: #ff6b35; --room-color-dark: #cc4400;">
+      <svg class="glow-rays" viewBox="0 0 80 80" fill="none"><circle cx="80" cy="0" r="60" fill="#ff6b35" opacity="0.3"/></svg>
+      <div class="room-header">
+        <div class="room-info">
+          <div class="room-icon">🍽️</div>
+          <div>
+            <div class="room-title">Ruang Makan</div>
+            <div class="room-count"><span class="status-dot" id="dot-makan"></span><span id="info-makan">0 / 1 menyala</span></div>
+          </div>
+        </div>
+        <div class="master-toggle" style="--room-color: #ff6b35; --room-color-dark: #cc4400;">
+          <div class="master-toggle-wrap">
+            <span class="master-label">All</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="master-makan" onchange="masterToggle('makan')">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="lamps-grid">
+        <div class="lamp-item" id="item-lampu4">
+          <svg class="lamp-svg" id="lampu4" viewBox="0 0 48 60">
+            <defs><radialGradient id="bulb4" cx="50%" cy="40%" r="50%"><stop offset="0%" stop-color="#555" id="bulb4-c1"/><stop offset="100%" stop-color="#222" id="bulb4-c2"/></radialGradient></defs>
+            <ellipse cx="24" cy="22" rx="14" ry="16" fill="url(#bulb4)" stroke="#333" stroke-width="1.5"/>
+            <path d="M17 36 Q24 42 31 36" fill="none" stroke="#333" stroke-width="2"/>
+            <rect x="19" y="36" width="10" height="4" rx="2" fill="#2a2a2a" stroke="#333"/>
+            <rect x="20" y="40" width="8" height="3" rx="1.5" fill="#252525" stroke="#333"/>
+            <line x1="24" y1="0" x2="24" y2="6" stroke="#444" stroke-width="2"/>
+          </svg>
+          <span class="lamp-name">Lampu 4</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="default-toggle4" onchange="saklarSingle(4, 'makan')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- RUANGAN TIDUR (2 lampu: 5,6) -->
+    <div class="room-card" id="room-tidur" style="--room-color: #a855f7; --room-color-dark: #7c22d4;">
+      <svg class="glow-rays" viewBox="0 0 80 80" fill="none"><circle cx="80" cy="0" r="60" fill="#a855f7" opacity="0.3"/></svg>
+      <div class="room-header">
+        <div class="room-info">
+          <div class="room-icon">🛏️</div>
+          <div>
+            <div class="room-title">Ruang Tidur</div>
+            <div class="room-count"><span class="status-dot" id="dot-tidur"></span><span id="info-tidur">0 / 2 menyala</span></div>
+          </div>
+        </div>
+        <div class="master-toggle" style="--room-color: #a855f7; --room-color-dark: #7c22d4;">
+          <div class="master-toggle-wrap">
+            <span class="master-label">All</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="master-tidur" onchange="masterToggle('tidur')">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="lamps-grid">
+        <div class="lamp-item" id="item-lampu5">
+          <svg class="lamp-svg" id="lampu5" viewBox="0 0 48 60">
+            <defs><radialGradient id="bulb5" cx="50%" cy="40%" r="50%"><stop offset="0%" stop-color="#555" id="bulb5-c1"/><stop offset="100%" stop-color="#222" id="bulb5-c2"/></radialGradient></defs>
+            <ellipse cx="24" cy="22" rx="14" ry="16" fill="url(#bulb5)" stroke="#333" stroke-width="1.5"/>
+            <path d="M17 36 Q24 42 31 36" fill="none" stroke="#333" stroke-width="2"/>
+            <rect x="19" y="36" width="10" height="4" rx="2" fill="#2a2a2a" stroke="#333"/>
+            <rect x="20" y="40" width="8" height="3" rx="1.5" fill="#252525" stroke="#333"/>
+            <line x1="24" y1="0" x2="24" y2="6" stroke="#444" stroke-width="2"/>
+          </svg>
+          <span class="lamp-name">Lampu 5</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="default-toggle5" onchange="saklarSingle(5, 'tidur')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="lamp-item" id="item-lampu6">
+          <svg class="lamp-svg" id="lampu6" viewBox="0 0 48 60">
+            <defs><radialGradient id="bulb6" cx="50%" cy="40%" r="50%"><stop offset="0%" stop-color="#555" id="bulb6-c1"/><stop offset="100%" stop-color="#222" id="bulb6-c2"/></radialGradient></defs>
+            <ellipse cx="24" cy="22" rx="14" ry="16" fill="url(#bulb6)" stroke="#333" stroke-width="1.5"/>
+            <path d="M17 36 Q24 42 31 36" fill="none" stroke="#333" stroke-width="2"/>
+            <rect x="19" y="36" width="10" height="4" rx="2" fill="#2a2a2a" stroke="#333"/>
+            <rect x="20" y="40" width="8" height="3" rx="1.5" fill="#252525" stroke="#333"/>
+            <line x1="24" y1="0" x2="24" y2="6" stroke="#444" stroke-width="2"/>
+          </svg>
+          <span class="lamp-name">Lampu 6</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="default-toggle6" onchange="saklarSingle(6, 'tidur')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- RUANGAN TAMU (4 lampu: 7,8,9,10) -->
+    <div class="room-card" id="room-tamu" style="--room-color: #FFC5D3; --room-color-dark: #FFC5D3;">
+      <svg class="glow-rays" viewBox="0 0 80 80" fill="none"><circle cx="80" cy="0" r="60" fill="#00ff88" opacity="0.3"/></svg>
+      <div class="room-header">
+        <div class="room-info">
+          <div class="room-icon">🚪</div>
+          <div>
+            <div class="room-title">Ruang Tamu</div>
+            <div class="room-count"><span class="status-dot" id="dot-tamu"></span><span id="info-tamu">0 / 4 menyala</span></div>
+          </div>
+        </div>
+        <div class="master-toggle" style="--room-color: #F784C5; --room-color-dark: #F784C5;">
+          <div class="master-toggle-wrap">
+            <span class="master-label">All</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="master-tamu" onchange="masterToggle('tamu')">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="lamps-grid">
+        <div class="lamp-item" id="item-lampu7">
+          <svg class="lamp-svg" id="lampu7" viewBox="0 0 48 60">
+            <defs><radialGradient id="bulb7" cx="50%" cy="40%" r="50%"><stop offset="0%" stop-color="#555" id="bulb7-c1"/><stop offset="100%" stop-color="#222" id="bulb7-c2"/></radialGradient></defs>
+            <ellipse cx="24" cy="22" rx="14" ry="16" fill="url(#bulb7)" stroke="#333" stroke-width="1.5"/>
+            <path d="M17 36 Q24 42 31 36" fill="none" stroke="#333" stroke-width="2"/>
+            <rect x="19" y="36" width="10" height="4" rx="2" fill="#2a2a2a" stroke="#333"/>
+            <rect x="20" y="40" width="8" height="3" rx="1.5" fill="#252525" stroke="#333"/>
+            <line x1="24" y1="0" x2="24" y2="6" stroke="#444" stroke-width="2"/>
+          </svg>
+          <span class="lamp-name">Lampu 7</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="default-toggle7" onchange="saklarSingle(7, 'tamu')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="lamp-item" id="item-lampu8">
+          <svg class="lamp-svg" id="lampu8" viewBox="0 0 48 60">
+            <defs><radialGradient id="bulb8" cx="50%" cy="40%" r="50%"><stop offset="0%" stop-color="#555" id="bulb8-c1"/><stop offset="100%" stop-color="#222" id="bulb8-c2"/></radialGradient></defs>
+            <ellipse cx="24" cy="22" rx="14" ry="16" fill="url(#bulb8)" stroke="#333" stroke-width="1.5"/>
+            <path d="M17 36 Q24 42 31 36" fill="none" stroke="#333" stroke-width="2"/>
+            <rect x="19" y="36" width="10" height="4" rx="2" fill="#2a2a2a" stroke="#333"/>
+            <rect x="20" y="40" width="8" height="3" rx="1.5" fill="#252525" stroke="#333"/>
+            <line x1="24" y1="0" x2="24" y2="6" stroke="#444" stroke-width="2"/>
+          </svg>
+          <span class="lamp-name">Lampu 8</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="default-toggle8" onchange="saklarSingle(8, 'tamu')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="lamp-item" id="item-lampu9">
+          <svg class="lamp-svg" id="lampu9" viewBox="0 0 48 60">
+            <defs><radialGradient id="bulb9" cx="50%" cy="40%" r="50%"><stop offset="0%" stop-color="#555" id="bulb9-c1"/><stop offset="100%" stop-color="#222" id="bulb9-c2"/></radialGradient></defs>
+            <ellipse cx="24" cy="22" rx="14" ry="16" fill="url(#bulb9)" stroke="#333" stroke-width="1.5"/>
+            <path d="M17 36 Q24 42 31 36" fill="none" stroke="#333" stroke-width="2"/>
+            <rect x="19" y="36" width="10" height="4" rx="2" fill="#2a2a2a" stroke="#333"/>
+            <rect x="20" y="40" width="8" height="3" rx="1.5" fill="#252525" stroke="#333"/>
+            <line x1="24" y1="0" x2="24" y2="6" stroke="#444" stroke-width="2"/>
+          </svg>
+          <span class="lamp-name">Lampu 9</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="default-toggle9" onchange="saklarSingle(9, 'tamu')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="lamp-item" id="item-lampu10">
+          <svg class="lamp-svg" id="lampu10" viewBox="0 0 48 60">
+            <defs><radialGradient id="bulb10" cx="50%" cy="40%" r="50%"><stop offset="0%" stop-color="#555" id="bulb10-c1"/><stop offset="100%" stop-color="#222" id="bulb10-c2"/></radialGradient></defs>
+            <ellipse cx="24" cy="22" rx="14" ry="16" fill="url(#bulb10)" stroke="#333" stroke-width="1.5"/>
+            <path d="M17 36 Q24 42 31 36" fill="none" stroke="#333" stroke-width="2"/>
+            <rect x="19" y="36" width="10" height="4" rx="2" fill="#2a2a2a" stroke="#333"/>
+            <rect x="20" y="40" width="8" height="3" rx="1.5" fill="#252525" stroke="#333"/>
+            <line x1="24" y1="0" x2="24" y2="6" stroke="#444" stroke-width="2"/>
+          </svg>
+          <span class="lamp-name">Lampu 10</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="default-toggle10" onchange="saklarSingle(10, 'tamu')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end rooms-grid -->
+
+  <footer>
+    <span>Smart Home</span> &nbsp;·&nbsp; Sistem Kontrol Lampu &nbsp;·&nbsp;
+  </footer>
+
+</div>
+
+<script>
+  // Room configuration: maps room name to its lamp IDs
+  const roomConfig = {
+    keluarga: [1, 2, 3],
+    makan:    [4],
+    tidur:    [5, 6],
+    tamu:     [7, 8, 9, 10]
+  };
+
+  function setLampState(num, state) {
+    const item  = document.getElementById('item-lampu' + num);
+    const svg   = document.getElementById('lampu' + num);
+    const c1    = document.getElementById('bulb' + num + '-c1');
+    const c2    = document.getElementById('bulb' + num + '-c2');
+
+    if (state) {
+      item.classList.add('lamp-on');
+      // Golden glow for ON
+      c1.setAttribute('stop-color', '#fff9c4');
+      c2.setAttribute('stop-color', '#ffd700');
+      svg.querySelectorAll('path, rect').forEach(el => {
+        el.style.stroke = '#ffd70088';
+      });
+    } else {
+      item.classList.remove('lamp-on');
+      // Dark for OFF
+      c1.setAttribute('stop-color', '#555');
+      c2.setAttribute('stop-color', '#222');
+      svg.querySelectorAll('path, rect').forEach(el => {
+        el.style.stroke = '';
+      });
+    }
+  }
+
+  function updateRoomStatus(roomName) {
+    const lamps   = roomConfig[roomName];
+    const onCount = lamps.filter(n => document.getElementById('default-toggle' + n).checked).length;
+    const total   = lamps.length;
+
+    document.getElementById('info-' + roomName).textContent = onCount + ' / ' + total + ' menyala';
+
+    const dot      = document.getElementById('dot-' + roomName);
+    const card     = document.getElementById('room-' + roomName);
+    const master   = document.getElementById('master-' + roomName);
+
+    if (onCount === total) {
+      dot.classList.add('active');
+      card.classList.add('active-room');
+      master.checked = true;
+    } else if (onCount === 0) {
+      dot.classList.remove('active');
+      card.classList.remove('active-room');
+      master.checked = false;
+    } else {
+      dot.classList.add('active');
+      card.classList.add('active-room');
+      master.indeterminate = true;
+    }
+
+    updateGlobalStats();
+  }
+
+  function updateGlobalStats() {
+    let totalOn = 0;
+    for (let n = 1; n <= 10; n++) {
+      if (document.getElementById('default-toggle' + n).checked) totalOn++;
+    }
+    document.getElementById('total-on').textContent  = totalOn;
+    document.getElementById('total-off').textContent = 10 - totalOn;
+
+    let activeRooms = 0;
+    Object.keys(roomConfig).forEach(room => {
+      const lamps   = roomConfig[room];
+      const onCount = lamps.filter(n => document.getElementById('default-toggle' + n).checked).length;
+      if (onCount > 0) activeRooms++;
+    });
+    document.getElementById('total-rooms').textContent = activeRooms;
+  }
+
+  function saklarSingle(num, room) {
+    const toggle = document.getElementById('default-toggle' + num);
+    setLampState(num, toggle.checked);
+    updateRoomStatus(room);
+  }
+
+  function masterToggle(roomName) {
+    const master = document.getElementById('master-' + roomName);
+    const state  = master.checked;
+    master.indeterminate = false;
+
+    roomConfig[roomName].forEach(n => {
+      const toggle   = document.getElementById('default-toggle' + n);
+      toggle.checked = state;
+      setLampState(n, state);
+    });
+
+    updateRoomStatus(roomName);
+  }
+
+  // Legacy saklar() function kept for compatibility
+  function saklar() {
+    for (let n = 1; n <= 10; n++) {
+      const toggle = document.getElementById('default-toggle' + n);
+      if (toggle) setLampState(n, toggle.checked);
+    }
+    Object.keys(roomConfig).forEach(room => updateRoomStatus(room));
+  }
+
+  // Init
+  updateGlobalStats();
+</script>
+</body>
+</html>
